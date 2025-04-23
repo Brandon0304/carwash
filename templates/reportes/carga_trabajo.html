@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+
+{% block title %}Carga de Trabajo - Sistema de Gestión de Lavado de Autos{% endblock %}
+
+{% block content %}
+<div class="card shadow">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="bi bi-people me-2"></i>Carga de trabajo por empleado</h5>
+    </div>
+    <div class="card-body">
+        <div class="alert alert-info mb-4">
+            <p class="mb-0">Este reporte muestra la carga de trabajo actual por empleado (servicios pendientes).</p>
+        </div>
+
+        <div class="row">
+            {% for item in carga %}
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card h-100 {{ 'border-success' if item.total <= 2 else 'border-warning' if item.total <= 4 else 'border-danger' }}">
+                    <div class="card-header">
+                        <h5 class="mb-0">{{ item.empleado.nombre }} {{ item.empleado.apellido }}</h5>
+                        <p class="mb-0 text-muted">Turno: {{ item.empleado.turno|capitalize }}</p>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-center mb-3">
+                            <div class="rounded-circle bg-{{ 'success' if item.total <= 2 else 'warning' if item.total <= 4 else 'danger' }} text-white d-flex align-items-center justify-content-center" style="width: 100px; height: 100px;">
+                                <h2 class="mb-0">{{ item.total }}</h2>
+                            </div>
+                        </div>
+
+                        {% if item.servicios %}
+                        <h6>Servicios asignados:</h6>
+                        <ul class="list-group">
+                            {% for servicio in item.servicios %}
+                            <li class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>{{ servicio.vehiculo.placa }}</strong> - {{ servicio.tipo_servicio.nombre }}
+                                    </div>
+                                    <span class="badge bg-primary rounded-pill">
+                                        {{ servicio.fecha_entrada.strftime('%H:%M') }}
+                                    </span>
+                                </div>
+                                <small class="text-muted">{{ servicio.vehiculo.cliente.nombre }}</small>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <p class="text-center text-muted">No tiene servicios asignados actualmente.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="alert alert-secondary mt-4">
+            <h5 class="alert-heading">Gráfico de carga de trabajo</h5>
+            <div class="mt-3" style="height: 300px;">
+                <canvas id="cargaChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('cargaChart').getContext('2d');
+
+        const labels = [{% for item in carga %}'{{ item.empleado.nombre }} {{ item.empleado.apellido }}',{% endfor %}];
+        const data = [{% for item in carga %}{{ item.total }},{% endfor %}];
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Servicios pendientes',
+                    data: data,
+                    backgroundColor: [
+                        {% for item in carga %}
+                        '{{ 'rgba(40, 167, 69, 0.6)' if item.total <= 2 else 'rgba(255, 193, 7, 0.6)' if item.total <= 4 else 'rgba(220, 53, 69, 0.6)' }}',
+                        {% endfor %}
+                    ],
+                    borderColor: [
+                        {% for item in carga %}
+                        '{{ 'rgba(40, 167, 69, 1)' if item.total <= 2 else 'rgba(255, 193, 7, 1)' if item.total <= 4 else 'rgba(220, 53, 69, 1)' }}',
+                        {% endfor %}
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

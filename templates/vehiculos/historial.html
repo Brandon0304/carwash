@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+
+{% block title %}Historial de Vehículo - Sistema de Gestión de Lavado de Autos{% endblock %}
+
+{% block content %}
+<div class="card shadow">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Historial del vehículo</h5>
+        <a href="{{ url_for('historial_vehiculo') }}" class="btn btn-light btn-sm">
+            <i class="bi bi-search me-1"></i>Nueva búsqueda
+        </a>
+    </div>
+    <div class="card-body">
+        <div class="alert alert-info mb-4">
+            <div class="row">
+                <div class="col-md-6">
+                    <p class="mb-1"><strong>Vehículo:</strong> {{ vehiculo.placa }}</p>
+                    <p class="mb-1"><strong>Marca/Modelo:</strong> {{ vehiculo.marca }} {{ vehiculo.modelo }}</p>
+                    <p class="mb-0"><strong>Color:</strong> {{ vehiculo.color }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p class="mb-1"><strong>Cliente:</strong> {{ vehiculo.cliente.nombre }}</p>
+                    <p class="mb-1"><strong>Teléfono:</strong> {{ vehiculo.cliente.telefono }}</p>
+                    <p class="mb-0"><strong>Fecha de registro:</strong> {{ vehiculo.fecha_registro.strftime('%d/%m/%Y') }}</p>
+                </div>
+            </div>
+        </div>
+
+        <h5 class="mb-3">Servicios realizados</h5>
+        {% if servicios %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Tipo de servicio</th>
+                        <th>Fecha entrada</th>
+                        <th>Fecha salida</th>
+                        <th>Duración</th>
+                        <th>Empleado</th>
+                        <th>Precio</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for servicio in servicios %}
+                    <tr>
+                        <td>{{ servicio.id }}</td>
+                        <td>{{ servicio.tipo_servicio.nombre }}</td>
+                        <td>{{ servicio.fecha_entrada.strftime('%d/%m/%Y %H:%M') }}</td>
+                        <td>
+                            {% if servicio.fecha_salida %}
+                                {{ servicio.fecha_salida.strftime('%d/%m/%Y %H:%M') }}
+                            {% else %}
+                                <span class="badge bg-warning">En proceso</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if servicio.fecha_salida %}
+                                {% set duracion = servicio.duracion|int %}
+                                {% if duracion >= 60 %}
+                                    {{ (duracion / 60)|int }}h {{ duracion % 60 }}m
+                                {% else %}
+                                    {{ duracion }}m
+                                {% endif %}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>{{ servicio.empleado.nombre }}</td>
+                        <td>${{ servicio.precio }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="alert alert-secondary mt-3">
+            <p class="mb-0">
+                <strong>Total de servicios:</strong> {{ servicios|length }} |
+                <strong>Total gastado:</strong> ${{ servicios|sum(attribute='precio') }}
+            </p>
+        </div>
+        {% else %}
+        <div class="alert alert-warning">
+            <p class="mb-0 text-center">Este vehículo no tiene servicios registrados.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

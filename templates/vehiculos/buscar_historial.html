@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}Historial de Vehículo - Sistema de Gestión de Lavado de Autos{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-search me-2"></i>Consultar historial de vehículo</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('historial_vehiculo') }}">
+                    <div class="mb-4">
+                        <label for="placa" class="form-label">Ingrese la placa del vehículo</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-car-front"></i></span>
+                            <input type="text" class="form-control" id="placa" name="placa" placeholder="Ej: ABC123" required>
+                            <button type="submit" class="btn btn-primary">Buscar</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Script para convertir placa a mayúsculas
+    document.getElementById('placa').addEventListener('input', function() {
+        this.value = this.value.toUpperCase();
+    });
+</script>
+{% endblock %}

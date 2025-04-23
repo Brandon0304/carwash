@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}Asignar Servicio - Sistema de Gestión de Lavado de Autos{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-droplet me-2"></i>Asignar servicio de lavado</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <h6 class="mb-1">Datos del vehículo:</h6>
+                    <p class="mb-0">
+                        <strong>Placa:</strong> {{ vehiculo.placa }} |
+                        <strong>Tipo:</strong> {{ vehiculo.tipo|capitalize }} |
+                        <strong>Cliente:</strong> {{ vehiculo.cliente.nombre }}
+                    </p>
+                </div>
+
+                <form method="POST" action="{{ url_for('nuevo_servicio', vehiculo_id=vehiculo.id) }}">
+                    <div class="mb-3">
+                        <label for="tipo_servicio_id" class="form-label">Tipo de servicio*</label>
+                        <select class="form-select" id="tipo_servicio_id" name="tipo_servicio_id" required>
+                            <option value="">Seleccione un servicio...</option>
+                            {% for tipo in tipos_servicio %}
+                            <option value="{{ tipo.id }}" data-precio="{{ tipo.precio }}" data-tiempo="{{ tipo.tiempo_estimado }}">
+                                {{ tipo.nombre }} - ${{ tipo.precio }} ({{ tipo.tiempo_estimado }} min)
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Precio</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="text" class="form-control" id="precio_display" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Tiempo estimado</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="tiempo_display" readonly>
+                                <span class="input-group-text">minutos</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="observaciones" class="form-label">Observaciones</label>
+                        <textarea class="form-control" id="observaciones" name="observaciones" rows="3"></textarea>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary me-md-2">Cancelar</a>
+                        <button type="submit" class="btn btn-primary">Registrar servicio</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Actualizar precio y tiempo al seleccionar tipo de servicio
+    document.getElementById('tipo_servicio_id').addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const precio = selectedOption.getAttribute('data-precio');
+        const tiempo = selectedOption.getAttribute('data-tiempo');
+
+        document.getElementById('precio_display').value = precio ? precio : '';
+        document.getElementById('tiempo_display').value = tiempo ? tiempo : '';
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+
+{% block title %}Registrar Insumos - Sistema de Gestión de Lavado de Autos{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-droplet-fill me-2"></i>Registrar insumos utilizados</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Servicio #{{ servicio.id }}</strong></p>
+                            <p class="mb-1">Vehículo: {{ servicio.vehiculo.placa }} - {{ servicio.vehiculo.marca }} {{ servicio.vehiculo.modelo }}</p>
+                            <p class="mb-1">Cliente: {{ servicio.vehiculo.cliente.nombre }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-1">Tipo de servicio: {{ servicio.tipo_servicio.nombre }}</p>
+                            <p class="mb-1">Fecha de entrada: {{ servicio.fecha_entrada.strftime('%d/%m/%Y %H:%M') }}</p>
+                            <p class="mb-0">Precio: ${{ servicio.precio }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <form method="POST" action="{{ url_for('insumos_servicio', servicio_id=servicio.id) }}" class="row g-3 mb-4">
+                    <div class="col-md-5">
+                        <label for="insumo_id" class="form-label">Insumo</label>
+                        <select class="form-select" id="insumo_id" name="insumo_id" required>
+                            <option value="">Seleccione un insumo...</option>
+                            {% for insumo in insumos %}
+                            <option value="{{ insumo.id }}" data-unidad="{{ insumo.unidad }}" data-stock="{{ insumo.cantidad }}">
+                                {{ insumo.nombre }} (Stock: {{ insumo.cantidad }} {{ insumo.unidad }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="cantidad" class="form-label">Cantidad</label>
+                        <div class="input-group">
+                            <input type="number" step="0.01" min="0.01" class="form-control" id="cantidad" name="cantidad" required>
+                            <span class="input-group-text" id="unidad-addon">unidad</span>
+                        </div>
+                        <div class="form-text" id="stock-disponible"></div>
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-plus-circle me-2"></i>Agregar insumo
+                        </button>
+                    </div>
+                </form>
+
+                <hr>
+
+                <h5 class="mb-3">Insumos registrados</h5>
+                {% if insumos_usados %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Insumo</th>
+                                <th>Cantidad</th>
+                                <th>Fecha registro</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for insumo_usado in insumos_usados %}
+                            <tr>
+                                <td>{{ insumo_usado.insumo.nombre }}</td>
+                                <td>{{ insumo_usado.cantidad }} {{ insumo_usado.insumo.unidad }}</td>
+                                <td>{{ insumo_usado.fecha_registro.strftime('%d/%m/%Y %H:%M') }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-center text-muted">No se han registrado insumos para este servicio.</p>
+                {% endif %}
+
+                <div class="mt-4 d-flex justify-content-between">
+                    <a href="{{ url_for('servicios_pendientes') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-2"></i>Volver a servicios pendientes
+                    </a>
+                    <form method="POST" action="{{ url_for('finalizar_servicio', servicio_id=servicio.id) }}">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle me-2"></i>Finalizar servicio
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Actualizar unidad y stock disponible al seleccionar insumo
+    document.getElementById('insumo_id').addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const unidad = selectedOption.getAttribute('data-unidad');
+        const stock = selectedOption.getAttribute('data-stock');
+
+        document.getElementById('unidad-addon').textContent = unidad || 'unidad';
+        document.getElementById('stock-disponible').textContent = stock ? `Stock disponible: ${stock} ${unidad}` : '';
+    });
+
+    // Validar que la cantidad no exceda el stock disponible
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const insumoSelect = document.getElementById('insumo_id');
+        const selectedOption = insumoSelect.options[insumoSelect.selectedIndex];
+        const stock = parseFloat(selectedOption.getAttribute('data-stock'));
+        const cantidad = parseFloat(document.getElementById('cantidad').value);
+
+        if (cantidad > stock) {
+            e.preventDefault();
+            alert('La cantidad ingresada excede el stock disponible.');
+        }
+    });
+</script>
+{% endblock %}

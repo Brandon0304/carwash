@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block title %}Registrar Vehículo - Sistema de Gestión de Lavado de Autos{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-car-front me-2"></i>Registrar nuevo vehículo</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('nuevo_vehiculo') }}">
+                    <h5 class="mb-3">Datos del cliente</h5>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="nombre" class="form-label">Nombre completo*</label>
+                            <input type="text" class="form-control" id="nombre" name="nombre" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="telefono" class="form-label">Teléfono*</label>
+                            <input type="tel" class="form-control" id="telefono" name="telefono" required>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email">
+                    </div>
+
+                    <hr>
+
+                    <h5 class="mb-3">Datos del vehículo</h5>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="placa" class="form-label">Placa*</label>
+                            <input type="text" class="form-control" id="placa" name="placa" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="tipo" class="form-label">Tipo de vehículo*</label>
+                            <select class="form-select" id="tipo" name="tipo" required>
+                                <option value="">Seleccione...</option>
+                                <option value="auto">Automóvil</option>
+                                <option value="camioneta">Camioneta</option>
+                                <option value="motocicleta">Motocicleta</option>
+                                <option value="camion">Camión</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="marca" class="form-label">Marca</label>
+                            <input type="text" class="form-control" id="marca" name="marca">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="modelo" class="form-label">Modelo</label>
+                            <input type="text" class="form-control" id="modelo" name="modelo">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="color" class="form-label">Color</label>
+                            <input type="text" class="form-control" id="color" name="color">
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary me-md-2">Cancelar</a>
+                        <button type="submit" class="btn btn-primary">Registrar vehículo</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Script para convertir placa a mayúsculas
+    document.getElementById('placa').addEventListener('input', function() {
+        this.value = this.value.toUpperCase();
+    });
+</script>
+{% endblock %}
