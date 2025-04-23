@@ -1,8 +1,11 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from datetime import datetime, timedelta
 import os
+import base64
+import json
+import time
 from config import Config
 
 app = Flask(__name__)
@@ -14,6 +17,8 @@ from models.empleado import Empleado
 from models.insumo import Insumo
 from models.servicio import Servicio, TipoServicio, InsumoServicio
 from models.vehiculo import Vehiculo, Cliente
+from models.evaluacion import Evaluacion
+from models.cotizacion import Proveedor, Producto, Cotizacion
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -169,6 +174,7 @@ def servicios_pendientes():
         # Puedes devolver una página de error personalizada
         return render_template('error.html', error=str(e)), 500
 
+
 # RF005 - Historial de servicios
 @app.route('/vehiculos/historial', methods=['GET', 'POST'])
 @login_required
@@ -285,7 +291,8 @@ def nuevo_empleado():
             email=request.form['email'],
             telefono=request.form['telefono'],
             turno=request.form['turno'],
-            activo=True
+            activo=True,
+            es_admin=bool(request.form.get('es_admin', False))
         )
 
         empleado.set_password(request.form['password'])
@@ -341,59 +348,409 @@ def logout():
     return redirect(url_for('login'))
 
 
+# RQ-UF44 - Evaluación del servicio
+@app.route('/evaluacion/<string:token>', methods=['GET', 'POST'])
+def evaluacion_servicio(token):
+    # Decodificar token para obtener servicio_id
+    try:
+        servicio_id = decode_token(token)
+        servicio = Servicio.query.get_or_404(servicio_id)
+    except:
+        flash('El enlace de evaluación no es válido o ha expirado', 'danger')
+        return redirect(url_for('index'))
+
+    # Verificar que el servicio esté completado
+    if not servicio.fecha_salida:
+        flash('No se puede evaluar un servicio que no ha sido completado', 'warning')
+        return redirect(url_for('index'))
+
+    # Verificar si ya tiene una evaluación
+    evaluacion_existente = Evaluacion.query.filter_by(servicio_id=servicio.id).first()
+    if evaluacion_existente:
+        flash('Este servicio ya ha sido evaluado anteriormente', 'info')
+        return render_template('evaluacion/gracias.html')
+
+    if request.method == 'POST':
+        evaluacion = Evaluacion(
+            servicio_id=servicio.id,
+            tiempo_espera=int(request.form['tiempo_espera']),
+            amabilidad=int(request.form['amabilidad']),
+            calidad=int(request.form['calidad']),
+            comentario=request.form.get('comentario', '')
+        )
+
+        db.session.add(evaluacion)
+        db.session.commit()
+
+        return render_template('evaluacion/gracias.html')
+
+    return render_template('evaluacion/form.html', servicio=servicio)
+
+
+# Función para generar token para evaluación
+def generate_evaluation_token(servicio_id):
+    # En una implementación real, usaríamos una librería como itsdangerous
+    # Para este ejemplo, usamos un token simple
+    data = {
+        'servicio_id': servicio_id,
+        'exp': int(time.time()) + 7 * 24 * 3600  # 7 días de expiración
+    }
+
+    token = base64.urlsafe_b64encode(json.dumps(data).encode()).decode()
+    return token
+
+
+# Función para decodificar token de evaluación
+def decode_token(token):
+    import base64
+    import json
+    import time
+
+    try:
+        data = json.loads(base64.urlsafe_b64decode(token.encode()).decode())
+        if data['exp'] < int(time.time()):
+            raise ValueError("Token expired")
+        return data['servicio_id']
+    except:
+        raise ValueError("Invalid token")
+
+
+# Ruta para enviar enlace de evaluación
+@app.route('/servicios/<int:servicio_id>/enviar-evaluacion', methods=['POST'])
+@login_required
+def enviar_evaluacion(servicio_id):
+    servicio = Servicio.query.get_or_404(servicio_id)
+
+    if not servicio.fecha_salida:
+        flash('No se puede enviar evaluación para un servicio no completado', 'warning')
+        return redirect(url_for('index'))
+
+    # Generar token y construir URL
+    token = generate_evaluation_token(servicio.id)
+    url = url_for('evaluacion_servicio', token=token, _external=True)
+
+    # En una implementación real, enviaríamos el enlace por email o SMS
+    # Para este ejemplo, simplemente mostramos la URL
+    flash(f'Enlace de evaluación generado: {url}', 'success')
+
+    return redirect(url_for('historial_vehiculo'))
+
+
+# RQ-UF45 - Módulo de cotización de productos
+@app.route('/proveedores/registro', methods=['GET', 'POST'])
+def registro_proveedor():
+    if request.method == 'POST':
+        # Verificar si el proveedor ya existe
+        proveedor = Proveedor.query.filter_by(email=request.form['email']).first()
+
+        if proveedor:
+            flash('Ya existe un proveedor con este email', 'warning')
+            return redirect(url_for('login_proveedor'))
+
+        # Crear nuevo proveedor
+        proveedor = Proveedor(
+            nombre=request.form['nombre'],
+            email=request.form['email'],
+            telefono=request.form['telefono'],
+            empresa=request.form.get('empresa', '')
+        )
+
+        db.session.add(proveedor)
+        db.session.commit()
+
+        flash('Registro completado correctamente. Ahora puede iniciar sesión.', 'success')
+        return redirect(url_for('login_proveedor'))
+
+    return render_template('proveedores/registro.html')
+
+
+@app.route('/proveedores/login', methods=['GET', 'POST'])
+def login_proveedor():
+    if request.method == 'POST':
+        email = request.form['email']
+        proveedor = Proveedor.query.filter_by(email=email).first()
+
+        if not proveedor or not proveedor.activo:
+            flash('Email no registrado o cuenta inactiva', 'danger')
+            return redirect(url_for('login_proveedor'))
+
+        # En una implementación real, verificaríamos la contraseña
+        # Para este ejemplo simplificado, solo validamos el email
+
+        # Guardar ID de proveedor en sesión
+        session['proveedor_id'] = proveedor.id
+
+        return redirect(url_for('cotizaciones_proveedor'))
+
+    return render_template('proveedores/login.html')
+
+
+@app.route('/proveedores/cotizaciones')
+def cotizaciones_proveedor():
+    # Verificar si hay proveedor en sesión
+    if 'proveedor_id' not in session:
+        flash('Debe iniciar sesión para acceder', 'warning')
+        return redirect(url_for('login_proveedor'))
+
+    proveedor_id = session['proveedor_id']
+    proveedor = Proveedor.query.get_or_404(proveedor_id)
+
+    # Obtener productos publicados para cotizar
+    productos = Producto.query.filter_by(publicado=True, activo=True).all()
+
+    # Obtener cotizaciones previas del proveedor
+    cotizaciones = Cotizacion.query.filter_by(proveedor_id=proveedor_id).all()
+
+    return render_template('proveedores/cotizaciones.html',
+                           proveedor=proveedor,
+                           productos=productos,
+                           cotizaciones=cotizaciones)
+
+
+@app.route('/proveedores/cotizar/<int:producto_id>', methods=['POST'])
+def cotizar_producto(producto_id):
+    # Verificar si hay proveedor en sesión
+    if 'proveedor_id' not in session:
+        flash('Debe iniciar sesión para acceder', 'warning')
+        return redirect(url_for('login_proveedor'))
+
+    proveedor_id = session['proveedor_id']
+    producto = Producto.query.get_or_404(producto_id)
+
+    if not producto.publicado or not producto.activo:
+        flash('Este producto no está disponible para cotizar', 'warning')
+        return redirect(url_for('cotizaciones_proveedor'))
+
+    # Verificar si ya existe una cotización previa
+    cotizacion_existente = Cotizacion.query.filter_by(
+        producto_id=producto_id,
+        proveedor_id=proveedor_id
+    ).first()
+
+    if cotizacion_existente:
+        # Actualizar cotización existente
+        cotizacion_existente.precio = float(request.form['precio'])
+        cotizacion_existente.comentario = request.form.get('comentario', '')
+        cotizacion_existente.fecha_cotizacion = datetime.now()
+
+        db.session.commit()
+        flash('Cotización actualizada correctamente', 'success')
+    else:
+        # Crear nueva cotización
+        cotizacion = Cotizacion(
+            producto_id=producto_id,
+            proveedor_id=proveedor_id,
+            precio=float(request.form['precio']),
+            comentario=request.form.get('comentario', '')
+        )
+
+        db.session.add(cotizacion)
+        db.session.commit()
+        flash('Cotización registrada correctamente', 'success')
+
+    return redirect(url_for('cotizaciones_proveedor'))
+
+
+@app.route('/proveedores/logout')
+def logout_proveedor():
+    session.pop('proveedor_id', None)
+    flash('Ha cerrado sesión correctamente', 'success')
+    return redirect(url_for('login_proveedor'))
+
+
+# Rutas para administrador (gestión de productos)
+@app.route('/admin/productos')
+@login_required
+def admin_productos():
+    if not current_user.es_admin:
+        flash('Acceso no autorizado', 'danger')
+        return redirect(url_for('index'))
+
+    productos = Producto.query.all()
+    return render_template('admin/productos.html', productos=productos)
+
+
+@app.route('/admin/productos/nuevo', methods=['GET', 'POST'])
+@login_required
+def nuevo_producto():
+    if not current_user.es_admin:
+        flash('Acceso no autorizado', 'danger')
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        producto = Producto(
+            nombre=request.form['nombre'],
+            descripcion=request.form.get('descripcion', ''),
+            unidad=request.form['unidad'],
+            publicado=bool(request.form.get('publicado', False))
+        )
+
+        db.session.add(producto)
+        db.session.commit()
+
+        flash('Producto agregado correctamente', 'success')
+        return redirect(url_for('admin_productos'))
+
+    return render_template('admin/producto_form.html')
+
+
+@app.route('/admin/productos/<int:producto_id>/editar', methods=['GET', 'POST'])
+@login_required
+def editar_producto(producto_id):
+    if not current_user.es_admin:
+        flash('Acceso no autorizado', 'danger')
+        return redirect(url_for('index'))
+
+    producto = Producto.query.get_or_404(producto_id)
+
+    if request.method == 'POST':
+        producto.nombre = request.form['nombre']
+        producto.descripcion = request.form.get('descripcion', '')
+        producto.unidad = request.form['unidad']
+        producto.publicado = bool(request.form.get('publicado', False))
+
+        db.session.commit()
+
+        flash('Producto actualizado correctamente', 'success')
+        return redirect(url_for('admin_productos'))
+
+    return render_template('admin/producto_form.html', producto=producto)
+
+
+@app.route('/admin/cotizaciones')
+@login_required
+def admin_cotizaciones():
+    if not current_user.es_admin:
+        flash('Acceso no autorizado', 'danger')
+        return redirect(url_for('index'))
+
+    # Agrupar cotizaciones por producto para comparar precios
+    productos = Producto.query.filter_by(activo=True).all()
+    cotizaciones_por_producto = {}
+
+    for producto in productos:
+        cotizaciones = Cotizacion.query.filter_by(producto_id=producto.id).order_by(Cotizacion.precio).all()
+        if cotizaciones:
+            cotizaciones_por_producto[producto] = cotizaciones
+
+    return render_template('admin/cotizaciones.html',
+                           cotizaciones_por_producto=cotizaciones_por_producto)
+
+
+# Ruta para ver reporte de evaluaciones de servicio
+@app.route('/admin/evaluaciones')
+@login_required
+def admin_evaluaciones():
+    if not current_user.es_admin:
+        flash('Acceso no autorizado', 'danger')
+        return redirect(url_for('index'))
+
+    evaluaciones = Evaluacion.query.order_by(Evaluacion.fecha_evaluacion.desc()).all()
+
+    # Calcular promedios generales
+    if evaluaciones:
+        promedio_tiempo = sum(e.tiempo_espera for e in evaluaciones) / len(evaluaciones)
+        promedio_amabilidad = sum(e.amabilidad for e in evaluaciones) / len(evaluaciones)
+        promedio_calidad = sum(e.calidad for e in evaluaciones) / len(evaluaciones)
+        promedio_general = sum(e.promedio for e in evaluaciones) / len(evaluaciones)
+    else:
+        promedio_tiempo = promedio_amabilidad = promedio_calidad = promedio_general = 0
+
+    return render_template('admin/evaluaciones.html',
+                           evaluaciones=evaluaciones,
+                           promedio_tiempo=promedio_tiempo,
+                           promedio_amabilidad=promedio_amabilidad,
+                           promedio_calidad=promedio_calidad,
+                           promedio_general=promedio_general)
+
+
 # Inicializar la base de datos con datos de prueba
 @app.cli.command('init-db')
 def init_db_command():
+    # Crear tablas si no existen
     db.create_all()
 
-    # Crear tipos de servicio
-    tipos_servicio = [
-        TipoServicio(nombre='Lavado Básico - Auto', descripcion='Lavado exterior', precio=15.00, tiempo_estimado=20,
-                     tipo_vehiculo='auto'),
-        TipoServicio(nombre='Lavado Completo - Auto', descripcion='Lavado exterior e interior', precio=25.00,
-                     tiempo_estimado=40, tipo_vehiculo='auto'),
-        TipoServicio(nombre='Lavado Premium - Auto', descripcion='Lavado exterior, interior y encerado', precio=35.00,
-                     tiempo_estimado=60, tipo_vehiculo='auto'),
-        TipoServicio(nombre='Lavado Básico - Camioneta', descripcion='Lavado exterior', precio=20.00,
-                     tiempo_estimado=30, tipo_vehiculo='camioneta'),
-        TipoServicio(nombre='Lavado Completo - Camioneta', descripcion='Lavado exterior e interior', precio=30.00,
-                     tiempo_estimado=50, tipo_vehiculo='camioneta'),
-        TipoServicio(nombre='Lavado Premium - Camioneta', descripcion='Lavado exterior, interior y encerado',
-                     precio=45.00, tiempo_estimado=70, tipo_vehiculo='camioneta'),
-    ]
+    # Crear tipos de servicio si no existen
+    if TipoServicio.query.count() == 0:
+        tipos_servicio = [
+            TipoServicio(nombre='Lavado Básico - Auto', descripcion='Lavado exterior', precio=15.00, tiempo_estimado=20,
+                         tipo_vehiculo='auto'),
+            TipoServicio(nombre='Lavado Completo - Auto', descripcion='Lavado exterior e interior', precio=25.00,
+                         tiempo_estimado=40, tipo_vehiculo='auto'),
+            TipoServicio(nombre='Lavado Premium - Auto', descripcion='Lavado exterior, interior y encerado',
+                         precio=35.00,
+                         tiempo_estimado=60, tipo_vehiculo='auto'),
+            TipoServicio(nombre='Lavado Básico - Camioneta', descripcion='Lavado exterior', precio=20.00,
+                         tiempo_estimado=30, tipo_vehiculo='camioneta'),
+            TipoServicio(nombre='Lavado Completo - Camioneta', descripcion='Lavado exterior e interior', precio=30.00,
+                         tiempo_estimado=50, tipo_vehiculo='camioneta'),
+            TipoServicio(nombre='Lavado Premium - Camioneta', descripcion='Lavado exterior, interior y encerado',
+                         precio=45.00, tiempo_estimado=70, tipo_vehiculo='camioneta'),
+        ]
 
-    for tipo in tipos_servicio:
-        db.session.add(tipo)
+        for tipo in tipos_servicio:
+            db.session.add(tipo)
 
-    # Crear insumos
-    insumos = [
-        Insumo(nombre='Shampoo para autos', descripcion='Shampoo especial para lavado de autos', unidad='litro',
-               cantidad=20, stock_minimo=5),
-        Insumo(nombre='Cera para autos', descripcion='Cera para encerado', unidad='bote', cantidad=10, stock_minimo=3),
-        Insumo(nombre='Limpiador de interiores', descripcion='Limpiador para interiores', unidad='litro', cantidad=15,
-               stock_minimo=4),
-        Insumo(nombre='Aromatizante', descripcion='Aromatizante para interiores', unidad='unidad', cantidad=30,
-               stock_minimo=10),
-    ]
+    # Crear insumos si no existen
+    if Insumo.query.count() == 0:
+        insumos = [
+            Insumo(nombre='Shampoo para autos', descripcion='Shampoo especial para lavado de autos', unidad='litro',
+                   cantidad=20, stock_minimo=5),
+            Insumo(nombre='Cera para autos', descripcion='Cera para encerado', unidad='bote', cantidad=10,
+                   stock_minimo=3),
+            Insumo(nombre='Limpiador de interiores', descripcion='Limpiador para interiores', unidad='litro',
+                   cantidad=15,
+                   stock_minimo=4),
+            Insumo(nombre='Aromatizante', descripcion='Aromatizante para interiores', unidad='unidad', cantidad=30,
+                   stock_minimo=10),
+        ]
 
-    for insumo in insumos:
-        db.session.add(insumo)
+        for insumo in insumos:
+            db.session.add(insumo)
 
-    # Crear empleado admin
-    admin = Empleado(
-        nombre='Admin',
-        apellido='Sistema',
-        email='admin@carwash.com',
-        telefono='123456789',
-        turno='mañana',
-        activo=True,
-        es_admin=True
-    )
-    admin.set_password('admin123')
-    db.session.add(admin)
+    # Crear productos para cotización si no existen
+    if Producto.query.count() == 0:
+        productos = [
+            Producto(nombre='Shampoo para autos', descripcion='Shampoo especial para lavado de autos', unidad='litro',
+                     publicado=True),
+            Producto(nombre='Cera para autos', descripcion='Cera para encerado', unidad='bote', publicado=True),
+            Producto(nombre='Limpiador de interiores', descripcion='Limpiador para interiores', unidad='litro',
+                     publicado=True),
+            Producto(nombre='Aromatizante', descripcion='Aromatizante para interiores', unidad='unidad',
+                     publicado=True),
+            Producto(nombre='Toallas de microfibra', descripcion='Paquete de 5 toallas', unidad='paquete',
+                     publicado=True),
+            Producto(nombre='Aspiradora portátil', descripcion='Para limpieza de interiores', unidad='unidad',
+                     publicado=False),
+        ]
+
+        for producto in productos:
+            db.session.add(producto)
+
+    # Crear empleado admin si no existe
+    if Empleado.query.filter_by(email='admin@carwash.com').count() == 0:
+        admin = Empleado(
+            nombre='Admin',
+            apellido='Sistema',
+            email='admin@carwash.com',
+            telefono='123456789',
+            turno='mañana',
+            activo=True,
+            es_admin=True
+        )
+        admin.set_password('admin123')
+        db.session.add(admin)
 
     db.session.commit()
-    print('Base de datos inicializada')
+    print('Base de datos inicializada correctamente')
+
+
+# Agregar menús para las nuevas funcionalidades en el layout
+@app.context_processor
+def inject_menu_data():
+    return {
+        'show_admin_menu': current_user.is_authenticated and getattr(current_user, 'es_admin', False)
+    }
 
 
 if __name__ == '__main__':

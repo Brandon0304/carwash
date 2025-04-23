@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ 'Editar' if producto else 'Nuevo' }} Producto - Sistema de Gestión de Lavado de Autos{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-box-seam me-2"></i>{{ 'Editar' if producto else 'Nuevo' }} producto para cotización</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('editar_producto', producto_id=producto.id) if producto else url_for('nuevo_producto') }}">
+                    <div class="mb-3">
+                        <label for="nombre" class="form-label">Nombre del producto*</label>
+                        <input type="text" class="form-control" id="nombre" name="nombre" value="{{ producto.nombre if producto else '' }}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="descripcion" class="form-label">Descripción</label>
+                        <textarea class="form-control" id="descripcion" name="descripcion" rows="3">{{ producto.descripcion if producto else '' }}</textarea>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label for="unidad" class="form-label">Unidad de medida*</label>
+                            <select class="form-select" id="unidad" name="unidad" required>
+                                <option value="">Seleccione...</option>
+                                <option value="unidad" {% if producto and producto.unidad == 'unidad' %}selected{% endif %}>Unidad</option>
+                                <option value="litro" {% if producto and producto.unidad == 'litro' %}selected{% endif %}>Litro</option>
+                                <option value="ml" {% if producto and producto.unidad == 'ml' %}selected{% endif %}>Mililitro</option>
+                                <option value="kg" {% if producto and producto.unidad == 'kg' %}selected{% endif %}>Kilogramo</option>
+                                <option value="g" {% if producto and producto.unidad == 'g' %}selected{% endif %}>Gramo</option>
+                                <option value="caja" {% if producto and producto.unidad == 'caja' %}selected{% endif %}>Caja</option>
+                                <option value="paquete" {% if producto and producto.unidad == 'paquete' %}selected{% endif %}>Paquete</option>
+                                <option value="docena" {% if producto and producto.unidad == 'docena' %}selected{% endif %}>Docena</option>
+                                <option value="galón" {% if producto and producto.unidad == 'galón' %}selected{% endif %}>Galón</option>
+                                <option value="metro" {% if producto and producto.unidad == 'metro' %}selected{% endif %}>Metro</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" value="1" id="publicado" name="publicado" {% if producto and producto.publicado %}checked{% endif %}>
+                                <label class="form-check-label" for="publicado">
+                                    Publicar para cotización
+                                </label>
+                                <div class="form-text">Si está marcado, los proveedores podrán enviar sus cotizaciones</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('admin_productos') }}" class="btn btn-outline-secondary me-md-2">Cancelar</a>
+                        <button type="submit" class="btn btn-primary">{{ 'Actualizar' if producto else 'Guardar' }} producto</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -85,6 +85,26 @@
             <p class="mb-0 text-center">Este vehículo no tiene servicios registrados.</p>
         </div>
         {% endif %}
+
+        <!-- Añadir este botón dentro de la card-body cerca del final -->
+<div class="text-center mt-4">
+    <a href="{{ url_for('historial_vehiculo') }}" class="btn btn-outline-secondary me-2">
+        <i class="bi bi-arrow-left me-1"></i>Nueva búsqueda
+    </a>
+    {% for servicio in servicios %}
+        {% if servicio.fecha_salida and not servicio.evaluacion %}
+        <form method="POST" action="{{ url_for('enviar_evaluacion', servicio_id=servicio.id) }}" class="d-inline">
+            <button type="submit" class="btn btn-outline-primary">
+                <i class="bi bi-star me-1"></i>Solicitar evaluación
+            </button>
+        </form>
+        {% break %}
+        {% endif %}
+    {% endfor %}
+    <button onclick="window.print()" class="btn btn-outline-dark ms-2">
+        <i class="bi bi-printer me-1"></i>Imprimir
+    </button>
+</div>
     </div>
 </div>
 {% endblock %}

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evaluación de Servicio - Autolavado CUE</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .card {
+            border-radius: 8px;
+            overflow: hidden;
+            border: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .btn-primary {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+        .rating-container {
+            display: flex;
+            flex-direction: row-reverse;
+            justify-content: flex-end;
+        }
+        .rating-container input {
+            display: none;
+        }
+        .rating-container label {
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            margin-right: 5px;
+            position: relative;
+            font-size: 30px;
+            color: #ddd;
+        }
+        .rating-container label:before {
+            content: "\f586";
+            font-family: bootstrap-icons !important;
+            position: absolute;
+            opacity: 0;
+        }
+        .rating-container label:hover:before,
+        .rating-container label:hover ~ label:before,
+        .rating-container input:checked ~ label:before {
+            opacity: 1;
+            color: #f8bb00;
+        }
+        .rating-container input:checked ~ label {
+            color: #f8bb00;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header bg-primary text-white text-center py-3">
+                        <h4 class="mb-0">Evaluación del servicio</h4>
+                        <p class="mb-0">Autolavado CUE</p>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info mb-4">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p class="mb-1"><strong>Vehículo:</strong> {{ servicio.vehiculo.placa }}</p>
+                                    <p class="mb-0"><strong>Tipo:</strong> {{ servicio.tipo_servicio.nombre }}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p class="mb-1"><strong>Fecha:</strong> {{ servicio.fecha_salida.strftime('%d/%m/%Y') }}</p>
+                                    <p class="mb-0"><strong>Cliente:</strong> {{ servicio.vehiculo.cliente.nombre }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <p class="text-center mb-4">
+                            Su opinión es muy importante para nosotros. Por favor evalúe nuestro servicio.
+                        </p>
+
+                        <form method="POST" action="{{ request.url }}">
+                            <div class="mb-4">
+                                <label class="form-label"><strong>Tiempo de espera</strong></label>
+                                <div class="rating-container mb-2">
+                                    <input type="radio" id="tiempo_espera_5" name="tiempo_espera" value="5" required>
+                                    <label for="tiempo_espera_5" title="Excelente"></label>
+                                    <input type="radio" id="tiempo_espera_4" name="tiempo_espera" value="4">
+                                    <label for="tiempo_espera_4" title="Muy bueno"></label>
+                                    <input type="radio" id="tiempo_espera_3" name="tiempo_espera" value="3">
+                                    <label for="tiempo_espera_3" title="Bueno"></label>
+                                    <input type="radio" id="tiempo_espera_2" name="tiempo_espera" value="2">
+                                    <label for="tiempo_espera_2" title="Regular"></label>
+                                    <input type="radio" id="tiempo_espera_1" name="tiempo_espera" value="1">
+                                    <label for="tiempo_espera_1" title="Malo"></label>
+                                </div>
+                                <div class="text-muted small">¿Cómo califica el tiempo que esperó desde que dejó su vehículo hasta que le fue entregado?</div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label"><strong>Amabilidad del personal</strong></label>
+                                <div class="rating-container mb-2">
+                                    <input type="radio" id="amabilidad_5" name="amabilidad" value="5" required>
+                                    <label for="amabilidad_5" title="Excelente"></label>
+                                    <input type="radio" id="amabilidad_4" name="amabilidad" value="4">
+                                    <label for="amabilidad_4" title="Muy bueno"></label>
+                                    <input type="radio" id="amabilidad_3" name="amabilidad" value="3">
+                                    <label for="amabilidad_3" title="Bueno"></label>
+                                    <input type="radio" id="amabilidad_2" name="amabilidad" value="2">
+                                    <label for="amabilidad_2" title="Regular"></label>
+                                    <input type="radio" id="amabilidad_1" name="amabilidad" value="1">
+                                    <label for="amabilidad_1" title="Malo"></label>
+                                </div>
+                                <div class="text-muted small">¿Cómo califica la atención y trato del personal que lo atendió?</div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label"><strong>Calidad del servicio</strong></label>
+                                <div class="rating-container mb-2">
+                                    <input type="radio" id="calidad_5" name="calidad" value="5" required>
+                                    <label for="calidad_5" title="Excelente"></label>
+                                    <input type="radio" id="calidad_4" name="calidad" value="4">
+                                    <label for="calidad_4" title="Muy bueno"></label>
+                                    <input type="radio" id="calidad_3" name="calidad" value="3">
+                                    <label for="calidad_3" title="Bueno"></label>
+                                    <input type="radio" id="calidad_2" name="calidad" value="2">
+                                    <label for="calidad_2" title="Regular"></label>
+                                    <input type="radio" id="calidad_1" name="calidad" value="1">
+                                    <label for="calidad_1" title="Malo"></label>
+                                </div>
+                                <div class="text-muted small">¿Cómo califica el resultado del lavado de su vehículo?</div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="comentario" class="form-label"><strong>Comentarios adicionales</strong> (opcional)</label>
+                                <textarea class="form-control" id="comentario" name="comentario" rows="3" placeholder="Déjenos sus comentarios, sugerencias o quejas"></textarea>
+                            </div>
+
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary py-2">Enviar evaluación</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="mt-5 py-3 text-center text-muted">
+        <div class="container">
+            <p class="mb-0">© 2025 Autolavado CUE Alexander Von Humboldt</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
